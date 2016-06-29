@@ -4,6 +4,10 @@
 import json
 import requests
 
+# TODO:
+# i/ add style as instance variable instead of method arg
+# ii/ add HTTP Error handling at initialization
+
 
 """
 Fluxx Error Class
@@ -30,31 +34,64 @@ Exposes Crud functionality for given
 objects following authentication
 """
 
-class FluxxService(object):
+class Fluxx(object):
     # initialize fluxx api session
-    def __init__(self, instance, client_id, client_secret):
+    def __init__(self, instance, client_id, client_secret, style='detail'):
+        # generate base url based on instance type
+        _instance = instance.split('.')
+        domain = 'fluxx'
+        suffix = 'io'
+        if _instance.pop() == 'preprod':
+            domain = 'fluxxlabs'
+            suffix = 'com'
+        _base_url = 'https://{0}.{1}.{2}/'.format(instance, domain, suffix)
+
         # set auth token
-        data = {
+        oauth_data = {
             'grant_type': 'client_credentials',
             'client_id': client_id,
             'client_secret': client_secret
         }
-        resp = requests.post('https://{}.fluxx.io/oauth/token'.format(instance), data=data)
+        # send request /receive response
+        resp = requests.post(
+            _base_url + 'oauth/token',
+            data=oauth_data
+        )
         content = resp.json()
+
+        # set instance variables
+        self.style = style
+        # get auth token
         self.auth_token = content.get('access_token')
         self.headers = {
             'Authorization': 'Bearer {}'.format(self.auth_token),
         }
         # set base url
-        self.base_url = 'https://{}.fluxx.io/api/rest/v1/'.format(instance)
+        self.base_url = _base_url + 'api/rest/v1/'
 
+
+    # style property METHODS
+
+    @property
+    def style(self):
+        return self._style
+
+    @style.setter
+    def style(self, value):
+        options = ['detail', 'compact', 'full']
+        if not value in options:
+            raise ValueError('Style must one of: {}'.format(str(options)))
+        self._style = value
+
+
+    # crud METHODS
 
     # create new fluxx database record and return its id
-    def create(self, model, data, style='detail'):
+    def create(self, model, data):
         url = self.base_url + model
         body = {
             'data': json.dumps(data),
-            'style': style
+            'style': self.style
         }
         resp = requests.post(url, data=body, headers=self.headers)
         content = resp.json()
@@ -64,11 +101,11 @@ class FluxxService(object):
 
 
     # update an existing record and return it
-    def update(self, model, id, data, style='detail'):
+    def update(self, model, id, data):
         url = self.base_url + model + '/' + str( id )
         body = {
             'data': json.dumps(data),
-            'style': style
+            'style': self.style
         }
         resp = requests.put(url, data=body, headers=self.headers)
         content = resp.json()
@@ -78,12 +115,15 @@ class FluxxService(object):
 
 
     # returns list of all existing objects and filter if necessary
-    def list(self, model, options=None, params=None):
+    # uses instance style value if not present in POST body
+    def list(self, model, data=None, params=None):
         url = self.base_url + model
-        if not options:
+        if not data:
             resp = requests.get(url, params=params, headers=self.headers)
         else:
-            resp = requests.post(url + '/list', data=options, headers=self.headers)
+            if 'style' not in data:
+                data.update({'style': self.style})
+            resp = requests.post(url + '/list', data=data, headers=self.headers)
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'list', content.get('error'))
@@ -91,9 +131,9 @@ class FluxxService(object):
 
 
     # return a single record based on id
-    def fetch(self, model, id, style='full'):
+    def fetch(self, model, id):
         url = self.base_url + model + '/' + str( id )
-        resp = requests.get(url, params={'style':style}, headers=self.headers)
+        resp = requests.get(url, params={'style': self.style}, headers=self.headers)
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'fetch', content.get('error'))

@@ -2,4 +2,4 @@
 
 __version__ = '1'
 
-from .fluxx import FluxxService as Fluxx
+from .client import Fluxx, FluxxError
