@@ -1,0 +1,7 @@
+*.swo
+*.swp
+*.pyc
+.ropeproject
+node_modules
+.credentials
+*_creds.json
