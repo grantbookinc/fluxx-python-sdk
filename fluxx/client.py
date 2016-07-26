@@ -1,5 +1,7 @@
-# Fluxx API Python Client
-# Wed  8 Jun 17:04:16 2016
+"""
+Fluxx API Python Client
+    Wed  8 Jun 17:04:16 2016
+"""
 
 import json
 import requests
