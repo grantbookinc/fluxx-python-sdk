@@ -1,6 +1,9 @@
 *.swo
 *.swp
 *.pyc
+dist/
+build/
+__pycache__/
 .ropeproject
 node_modules
 .credentials

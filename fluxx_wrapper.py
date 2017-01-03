@@ -13,7 +13,15 @@ import requests
 # i/ add style as instance variable instead of method arg
 # ii/ add HTTP Error handling at initialization
 
-logger = logging.getLogger(__name__)
+
+try:
+    from logging import NullHandler
+except ImportError:
+    class NullHandler(logging.Handler):
+        def emit(self, record):
+            pass
+
+logger = logging.getLogger(__name__).addHandler(NullHandler())
 
 
 class FluxxError(Exception):

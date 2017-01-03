@@ -1,6 +1,6 @@
 import os
 import pytest
-from fluxx import Fluxx
+from fluxx_wrapper import Fluxx
 
 
 @pytest.fixture
