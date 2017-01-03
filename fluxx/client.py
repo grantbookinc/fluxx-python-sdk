@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 Fluxx API Python Client
     Wed  8 Jun 17:04:16 2016
@@ -12,7 +14,7 @@ import requests
 # ii/ add HTTP Error handling at initialization
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
 
 class FluxxError(Exception):
     """Fluxx error class,
@@ -46,7 +48,8 @@ class FluxxMethod(object):
         try:
             model_type, method_type = self.method_name.split('.')
             method = getattr(self.client, method_type)
-            method(model_type, *args, **kwargs)
+            return method(model_type, *args, **kwargs)
+
         except ValueError:
             raise AttributeError('Invalid model, method combination.')
 
@@ -125,11 +128,7 @@ class Fluxx(object):
         """update an existing record and return it"""
 
         url = self.base_url + model + '/' + str( id )
-        body = {
-            'data': json.dumps(data),
-            'style': self.style
-        }
-        resp = self.session.put(url, data=body, headers=self.headers)
+        resp = self.session.put(url, data=data, headers=self.headers)
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'update', content.get('error'))
