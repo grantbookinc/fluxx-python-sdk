@@ -8,7 +8,7 @@ test_requirements = ['pytest>=2.8.0']
 
 setup(
     name='fluxx_wrapper',
-    packages=['fluxx_wrapper'],
+    py_modules=['fluxx_wrapper'],
     version=version,
     description='A simple wrapper around Fluxx GMS\'s REST API.',
     author='Connor Sullivan',
