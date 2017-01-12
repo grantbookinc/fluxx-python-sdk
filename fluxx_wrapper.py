@@ -62,7 +62,7 @@ class FluxxMethod(object):
             raise AttributeError('Invalid model, method combination.')
 
 
-class Fluxx(object):
+class FluxxClient(object):
     """Fluxx API Client Object,
     exposes Crud functionality for given
     objects following authentication
@@ -122,11 +122,7 @@ class Fluxx(object):
         """create new fluxx database record and return its id"""
 
         url = self.base_url + model
-        body = {
-            'data': json.dumps(data),
-            'style': self.style
-        }
-        resp = self.session.post(url, data=body, headers=self.headers)
+        resp = self.session.post(url, data=data, headers=self.headers)
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'create', content.get('error'))
