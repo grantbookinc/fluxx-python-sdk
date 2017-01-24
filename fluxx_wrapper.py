@@ -96,14 +96,15 @@ class FluxxClient(object):
         content = resp.json()
 
         # set instance variables
-        self.style = style
-        # get auth token
-        self.auth_token = content.get('access_token')
-        self.headers = {
-            'Authorization': 'Bearer {}'.format(self.auth_token),
-        }
-        # set base url
         self.base_url = _base_url + 'api/rest/{}/'.format(version)
+        self.style = style
+
+        # set auth header
+        self.auth_token = content.get('access_token')
+        self.session.headers.update({
+            'Authorization': 'Bearer {}'.format(self.auth_token),
+        })
+
 
     # style property METHODS
 
@@ -122,7 +123,7 @@ class FluxxClient(object):
         """create new fluxx database record and return its id"""
 
         url = self.base_url + model
-        resp = self.session.post(url, data=data, headers=self.headers)
+        resp = self.session.post(url, data=data)
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'create', content.get('error'))
@@ -132,7 +133,7 @@ class FluxxClient(object):
         """update an existing record and return it"""
 
         url = self.base_url + model + '/' + str( id )
-        resp = self.session.put(url, data=data, headers=self.headers)
+        resp = self.session.put(url, data=data)
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'update', content.get('error'))
@@ -144,11 +145,11 @@ class FluxxClient(object):
 
         url = self.base_url + model
         if not data:
-            resp = self.session.get(url, params=params, headers=self.headers)
+            resp = self.session.get(url, params=params)
         else:
             if 'style' not in data:
                 data.update({'style': self.style})
-            resp = self.session.post(url + '/list', data=data, headers=self.headers)
+            resp = self.session.post(url + '/list', data=data)
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'list', content.get('error'))
@@ -158,7 +159,7 @@ class FluxxClient(object):
         """returns a single record based on id"""
 
         url = self.base_url + model + '/' + str( id )
-        resp = self.session.get(url, params={'style': self.style}, headers=self.headers)
+        resp = self.session.get(url, params={'style': self.style})
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'fetch', content.get('error'))
@@ -168,7 +169,7 @@ class FluxxClient(object):
         """deletes a single record based on id"""
 
         url = self.base_url + model + '/' + str( id )
-        resp = self.session.delete(url, headers=self.headers)
+        resp = self.session.delete(url)
         content = resp.json()
         if type(content) is dict:
             if 'error' in content:
