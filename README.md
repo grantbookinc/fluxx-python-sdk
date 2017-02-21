@@ -4,6 +4,7 @@ Simple wrapper around the Fluxx GMS API.
 ## Example Usage
 
 ```python
+	from fluxx_wrapper import FluxxClient
 
 	# initialize client
 	fluxx = FluxxClient(
@@ -41,6 +42,6 @@ Simple wrapper around the Fluxx GMS API.
 ```
 
 ## Installation
-```python
+```bash
 	$ pip install fluxx-python_sdk
 ```
