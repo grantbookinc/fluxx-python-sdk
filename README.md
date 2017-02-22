@@ -4,7 +4,7 @@ Simple wrapper around the Fluxx GMS API.
 ## Example Usage
 
 ```python
-	from fluxx_wrapper import FluxxClient
+	from fluxx_wrapper import FluxxClient, FluxxError
 
 	# initialize client
 	fluxx = FluxxClient(
@@ -21,21 +21,25 @@ Simple wrapper around the Fluxx GMS API.
 			'cols': '["attribute_type", "description", "legacy_name", "model_type"]'
 	})
 
-	# example workflow, switch certian legacy names to TitleCase and update
+	# example workflow, set empty description to regex-matching legacy names
 	for field in fields:
 			if not 'description' in field:
 					legacy_name = field['legacy_name']
 
 					if re.match(r'\(.*`.*`\)', legacy_name):
-							legacy_name = legacy_name.split('`')[1]
+						legacy_name = legacy_name.split('`')[1]
 
 					desc = legacy_name.replace('_', ' ')
 					desc = titlecase(desc)
 
-					updated = fluxx.model_attribute.update(field['id'], {
-							'cols': '["description"]',
-							'data': '{"description": "%s"}' % desc
-					})
+					try:
+						updated = fluxx.model_attribute.update(field['id'], {
+								'cols': '["description"]',
+								'data': '{"description": "%s"}' % desc
+						})
+					except FluxxError as e:
+						print e
+
 
 					print updated['description']
 
@@ -43,5 +47,5 @@ Simple wrapper around the Fluxx GMS API.
 
 ## Installation
 ```bash
-	$ pip install fluxx-python_sdk
+	$ pip install fluxx-python-sdk
 ```
