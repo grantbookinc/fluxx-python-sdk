@@ -88,22 +88,23 @@ class FluxxClient(object):
             'client_id': client_id,
             'client_secret': client_secret
         }
-        # send request /receive response
+
+        # retrieve OAuth auth token
         resp = self.session.post(
             _base_url + 'oauth/token',
             data=oauth_data
         )
         content = resp.json()
 
-        # set instance variables
-        self.base_url = _base_url + 'api/rest/{}/'.format(version)
-        self.style = style
-
         # set auth header
         self.auth_token = content.get('access_token')
         self.session.headers.update({
             'Authorization': 'Bearer {}'.format(self.auth_token),
         })
+
+        # set instance variables
+        self.base_url = _base_url + 'api/rest/{}/'.format(version)
+        self.style = style
 
 
     # style property METHODS
@@ -155,12 +156,16 @@ class FluxxClient(object):
             raise FluxxError(model, 'list', content.get('error'))
         return content['records'].get(model)
 
-    def fetch(self, model, id):
+    def get(self, model, id, params={}):
         """returns a single record based on id"""
 
         url = self.base_url + model + '/' + str( id )
-        resp = self.session.get(url, params={'style': self.style})
+        if not 'style' in params:
+            params.update({'style': self.style})
+
+        resp = self.session.get(url, params=params)
         content = resp.json()
+
         if 'error' in content:
             raise FluxxError(model, 'fetch', content.get('error'))
         return content.get(model)
