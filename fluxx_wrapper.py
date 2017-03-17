@@ -124,21 +124,21 @@ class FluxxClient(object):
         """create new fluxx database record and return its id"""
 
         url = self.base_url + model
-        resp = self.session.post(url, data=data)
-        content = resp.json()
+        content = self.session.post(url, data=data).json()
+
         if 'error' in content:
             raise FluxxError(model, 'create', content.get('error'))
-        return content.get( model )
+        return content.get(model.lower())
 
     def update(self, model, id, data):
         """update an existing record and return it"""
 
         url = self.base_url + model + '/' + str( id )
-        resp = self.session.put(url, data=data)
-        content = resp.json()
+        content = self.session.put(url, data=data).json()
+
         if 'error' in content:
             raise FluxxError(model, 'update', content.get('error'))
-        return content.get(model)
+        return content.get(model.lower())
 
     def list(self, model, data=None, params=None):
         """returns list of all existing objects and filter if necessary
@@ -151,10 +151,11 @@ class FluxxClient(object):
             if 'style' not in data:
                 data.update({'style': self.style})
             resp = self.session.post(url + '/list', data=data)
+
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'list', content.get('error'))
-        return content['records'].get(model)
+        return content['records'].get(model.lower())
 
     def get(self, model, id, params={}):
         """returns a single record based on id"""
@@ -163,19 +164,18 @@ class FluxxClient(object):
         if not 'style' in params:
             params.update({'style': self.style})
 
-        resp = self.session.get(url, params=params)
-        content = resp.json()
+        content = self.session.get(url, params=params).json()
 
         if 'error' in content:
             raise FluxxError(model, 'fetch', content.get('error'))
-        return content.get(model)
+        return content.get(model.lower())
 
     def delete(self, model, id):
         """deletes a single record based on id"""
 
         url = self.base_url + model + '/' + str( id )
-        resp = self.session.delete(url)
-        content = resp.json()
+        content = self.session.delete(url).json()
+
         if type(content) is dict:
             if 'error' in content:
                 raise FluxxError(model, 'fetch', content.get('error'))
