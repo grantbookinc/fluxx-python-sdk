@@ -24,7 +24,16 @@ except ImportError:
 logger = logging.getLogger(__name__).addHandler(NullHandler())
 
 
+def _pluck_result(model):
+    m = model.split('_')
+    if m[0] == 'mac':
+        return 'machine_model'
+    else:
+        return model.lower()
+
+
 class FluxxError(Exception):
+
     """Fluxx error class,
     contains a message and code
     """
@@ -42,6 +51,7 @@ class FluxxError(Exception):
 
 
 class FluxxMethod(object):
+
     """Allows first attribute of client
     to be substituted as the model type of an api call."""
 
@@ -63,6 +73,7 @@ class FluxxMethod(object):
 
 
 class FluxxClient(object):
+
     """Fluxx API Client Object,
     exposes Crud functionality for given
     objects following authentication
@@ -128,7 +139,7 @@ class FluxxClient(object):
 
         if 'error' in content:
             raise FluxxError(model, 'create', content.get('error'))
-        return content.get(model.lower())
+        return content.get(_pluck_result(model))
 
     def update(self, model, id, data):
         """update an existing record and return it"""
@@ -138,7 +149,7 @@ class FluxxClient(object):
 
         if 'error' in content:
             raise FluxxError(model, 'update', content.get('error'))
-        return content.get(model.lower())
+        return content.get(_pluck_result(model))
 
     def list(self, model, data=None, params=None):
         """returns list of all existing objects and filter if necessary
@@ -155,7 +166,7 @@ class FluxxClient(object):
         content = resp.json()
         if 'error' in content:
             raise FluxxError(model, 'list', content.get('error'))
-        return content['records'].get(model.lower())
+        return content['records'].get(_pluck_result(model))
 
     def get(self, model, id, params={}):
         """returns a single record based on id"""
@@ -168,7 +179,7 @@ class FluxxClient(object):
 
         if 'error' in content:
             raise FluxxError(model, 'fetch', content.get('error'))
-        return content.get(model.lower())
+        return content.get(_pluck_result(model))
 
     def delete(self, model, id):
         """deletes a single record based on id"""
