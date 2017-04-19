@@ -79,7 +79,7 @@ class FluxxClient(object):
     objects following authentication
     """
 
-    def __init__(self, instance, client_id, client_secret, version='v2', style='detail'):
+    def __init__(self, instance, client_id, client_secret, version='v2', style='full'):
         # generate base url based on instance type
         _instance = instance.split('.')
         domain = 'fluxx'
