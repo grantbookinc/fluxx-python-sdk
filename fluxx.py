@@ -32,6 +32,13 @@ def _pluck_result(model):
         return model.lower()
 
 
+def _to_write_body(dt):
+    return {
+        'cols': json.dumps(list(dt.values())),
+        'data': json.dumps(dt)
+    }
+
+
 class FluxxError(Exception):
 
     """Fluxx error class,
@@ -135,7 +142,8 @@ class FluxxClient(object):
         """create new fluxx database record and return its id"""
 
         url = self.base_url + model
-        content = self.session.post(url, data=data).json()
+        body = _to_write_body(data)
+        content = self.session.post(url, data=body).json()
 
         if 'error' in content:
             raise FluxxError(model, 'create', content.get('error'))
@@ -145,7 +153,8 @@ class FluxxClient(object):
         """update an existing record and return it"""
 
         url = self.base_url + model + '/' + str( id )
-        content = self.session.put(url, data=data).json()
+        body = _to_write_body(data)
+        content = self.session.put(url, data=body).json()
 
         if 'error' in content:
             raise FluxxError(model, 'update', content.get('error'))
