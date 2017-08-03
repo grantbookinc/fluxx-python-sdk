@@ -1,6 +1,11 @@
 # Fluxx API Python Client
 Simple wrapper around the Fluxx GMS API.
 
+## Installation
+```bash
+$ pip install fluxx-python-sdk
+```
+
 ## Example Usage
 
 ```python
@@ -17,8 +22,8 @@ fluxx = FluxxClient(
 
 # list model attributes
 fields = fluxx.model_attribute.list({
-    'per_page': 10000,
-    'cols': '["attribute_type", "description", "legacy_name", "model_type"]'
+    cols=['attribute_type', 'description', 'legacy_name', 'model_type'],
+    per_page=10000
 })
 
   # example workflow, set empty description to regex-matching legacy names
@@ -37,13 +42,8 @@ for field in fields:
         try:
             updated = fluxx.model_attribute.update(field['id'], body)
         except FluxxError as e:
-            print e
+            print(e)
 
 
-      print updated['description']
-```
-
-## Installation
-```bash
-$ pip install fluxx-python-sdk
+    print(updated['description'])
 ```

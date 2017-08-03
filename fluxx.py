@@ -5,6 +5,8 @@ Fluxx API Python Client
     Wed  8 Jun 17:04:16 2016
 """
 
+import os
+import threading
 import logging
 import json
 import requests
@@ -21,25 +23,42 @@ except ImportError:
         def emit(self, record):
             pass
 
-logger = logging.getLogger(__name__).addHandler(NullHandler())
+log = logging.getLogger(__name__)
+log.addHandler(NullHandler())
 
 
-def _pluck_result(model):
-    m = model.split('_')
-    if m[0] == 'mac':
-        return 'machine_model'
-    else:
-        return model.lower()
-
-
-def _to_write_body(dt):
+def format_write_request(dt):
     return {
         'cols': json.dumps(list(dt.values())),
         'data': json.dumps(dt)
     }
 
 
-class FluxxError(Exception):
+def parse_response(resp, model):
+    """Parses Requests response to return model,
+    raises Fluxx Error is call was unsuccessful
+
+    :resp: <Requests.Response>
+    :returns: <Dict>
+
+    """
+    content = resp.json()
+
+    if 'error' in content:
+        raise FluxxError(model, resp.request.method, content.get('error'))
+
+    if model.split('_')[0] == 'mac':
+        model = 'machine_model'
+    else:
+        model = model.lower()
+
+    if 'records' in content:
+        return content['records'].get(model)
+
+    return content.get(model)
+
+
+class FluxxError(IOError):
 
     """Fluxx error class,
     contains a message and code
@@ -52,8 +71,8 @@ class FluxxError(Exception):
         self.code = error.get('code')
 
     def __str__(self):
-        return 'Fluxx %s.%s: Error %s | %s' % (
-            self.model, self.action, self.code, self.message
+        return 'Error performing %s request on %s. Code: %s. Messages: %s' % (
+            self.action, self.model, self.code, self.message
         )
 
 
@@ -67,7 +86,7 @@ class FluxxMethod(object):
         self.method_name = method_name
 
     def __getattr__(self, key):
-        return FluxxMethod(self.client, '.'.join(( self.method_name, key )))
+        return FluxxMethod(self.client, '.'.join((self.method_name, key)))
 
     def __call__(self, *args, **kwargs):
         try:
@@ -86,7 +105,12 @@ class FluxxClient(object):
     objects following authentication
     """
 
-    def __init__(self, instance, client_id, client_secret, version='v2', style='full'):
+    instance = None
+    client_id = None
+    client_id = None
+
+    def __init__(self, instance, client_id,
+                 client_secret, version='v2', style='full'):
         # generate base url based on instance type
         _instance = instance.split('.')
         domain = 'fluxx'
@@ -124,9 +148,6 @@ class FluxxClient(object):
         self.base_url = _base_url + 'api/rest/{}/'.format(version)
         self.style = style
 
-
-    # style property METHODS
-
     @property
     def style(self):
         return self._style
@@ -134,7 +155,7 @@ class FluxxClient(object):
     @style.setter
     def style(self, value):
         options = ['detail', 'compact', 'full']
-        if not value in options:
+        if value not in options:
             raise ValueError('Style must one of: {}'.format(str(options)))
         self._style = value
 
@@ -142,64 +163,48 @@ class FluxxClient(object):
         """create new fluxx database record and return its id"""
 
         url = self.base_url + model
-        body = _to_write_body(data)
-        content = self.session.post(url, data=body).json()
-
-        if 'error' in content:
-            raise FluxxError(model, 'create', content.get('error'))
-        return content.get(_pluck_result(model))
+        body = format_write_request(data)
+        resp = self.session.post(url, data=body)
+        return parse_response(resp, model)
 
     def update(self, model, id, data):
         """update an existing record and return it"""
 
-        url = self.base_url + model + '/' + str( id )
-        body = _to_write_body(data)
-        content = self.session.put(url, data=body).json()
+        url = self.base_url + model + '/' + str(id)
+        body = format_write_request(data)
+        resp = self.session.put(url, data=body)
+        return parse_response(resp, model)
 
-        if 'error' in content:
-            raise FluxxError(model, 'update', content.get('error'))
-        return content.get(_pluck_result(model))
-
-    def list(self, model, data=None, params=None):
-        """returns list of all existing objects and filter if necessary
-        uses instance style value if not present in POST body"""
+    def list(self, model, cols=['id'], **kwargs):
+        """Returns list of relevent object with attributes specified
+        by the columns parameter. Default 100 records per page.
+        Current only supports GET requests.
+        """
 
         url = self.base_url + model
-        if not data:
-            resp = self.session.get(url, params=params)
-        else:
-            if 'style' not in data:
-                data.update({'style': self.style})
-            resp = self.session.post(url + '/list', data=data)
+        params = {
+            'cols': json.dumps(cols),
+            'per_page': kwargs.get('per_page', 100)
+        }
+        resp = self.session.get(url, params=params)
+        return parse_response(resp, model)
 
-        content = resp.json()
-        if 'error' in content:
-            raise FluxxError(model, 'list', content.get('error'))
-        return content['records'].get(_pluck_result(model))
-
-    def get(self, model, id, params={}):
+    def get(self, model, id, **kwargs):
         """returns a single record based on id"""
 
-        url = self.base_url + model + '/' + str( id )
-        if not 'style' in params:
-            params.update({'style': self.style})
-
-        content = self.session.get(url, params=params).json()
-
-        if 'error' in content:
-            raise FluxxError(model, 'fetch', content.get('error'))
-        return content.get(_pluck_result(model))
+        url = self.base_url + model + '/' + str(id)
+        params = {
+            'style': kwargs.get('style', self.style)
+        }
+        resp = self.session.get(url, params=params)
+        return parse_response(resp, model)
 
     def delete(self, model, id):
         """deletes a single record based on id"""
 
-        url = self.base_url + model + '/' + str( id )
-        content = self.session.delete(url).json()
-
-        if type(content) is dict:
-            if 'error' in content:
-                raise FluxxError(model, 'fetch', content.get('error'))
-        return content
+        url = self.base_url + model + '/' + str(id)
+        resp = self.session.delete(url)
+        return parse_response(resp, model)
 
     def __getattr__(self, name):
         """Inserts Fluxx Models as first argument
@@ -210,3 +215,41 @@ class FluxxClient(object):
 
         """
         return FluxxMethod(self, name)
+
+
+class FluxxWorker(threading.Thread):
+
+    """Spawns a new thread performing Fluxx API
+    create and update requests."""
+
+    def __init__(self, queue, build):
+        # 1/ build & sent Fluxx Client object w/ build
+        threading.Thread.__init__(self)
+        self.queue = queue
+        self.build = build
+
+        self.client = FluxxClient(
+            os.getenv('{}_INSTANCE'.format(self.build)),
+            os.getenv('{}_CLIENT'.format(self.build)),
+            os.getenv('{}_SECRET'.format(self.build))
+        )
+
+    def run(self):
+        while True:
+            i, model, record = self.queue.get()
+            try:
+                rid = record.get('id')
+                if rid:
+                    self.client.update(model, rid, record)
+                    msg = '{} {} updated successfully.'.format(model, i)
+                else:
+                    self.client.create(model, record)
+                    msg = '{} {} created successfully.'.format(model, i)
+                log.info(msg)
+            except FluxxError as e:
+                msg = '{}. {} {} write operation failed.'.format(
+                    e, model.upper(), i
+                )
+                log.error(msg)
+
+            self.queue.task_done()
