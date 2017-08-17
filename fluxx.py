@@ -11,11 +11,6 @@ import logging
 import json
 import requests
 
-# TODO:
-# i/ add style as instance variable instead of method arg
-# ii/ add HTTP Error handling at initialization
-
-
 try:
     from logging import NullHandler
 except ImportError:
@@ -189,11 +184,12 @@ class FluxxClient(object):
         resp = self.session.get(url, params=params)
         return parse_response(resp, model)
 
-    def get(self, model, id, **kwargs):
+    def get(self, model, id, cols=['id'], **kwargs):
         """returns a single record based on id"""
 
         url = self.base_url + model + '/' + str(id)
         params = {
+            'cols': json.dumps(cols),
             'style': kwargs.get('style', self.style)
         }
         resp = self.session.get(url, params=params)
@@ -215,41 +211,3 @@ class FluxxClient(object):
 
         """
         return FluxxMethod(self, name)
-
-
-class FluxxWorker(threading.Thread):
-
-    """Spawns a new thread performing Fluxx API
-    create and update requests."""
-
-    def __init__(self, queue, build):
-        # 1/ build & sent Fluxx Client object w/ build
-        threading.Thread.__init__(self)
-        self.queue = queue
-        self.build = build
-
-        self.client = FluxxClient(
-            os.getenv('{}_INSTANCE'.format(self.build)),
-            os.getenv('{}_CLIENT'.format(self.build)),
-            os.getenv('{}_SECRET'.format(self.build))
-        )
-
-    def run(self):
-        while True:
-            i, model, record = self.queue.get()
-            try:
-                rid = record.get('id')
-                if rid:
-                    self.client.update(model, rid, record)
-                    msg = '{} {} updated successfully.'.format(model, i)
-                else:
-                    self.client.create(model, record)
-                    msg = '{} {} created successfully.'.format(model, i)
-                log.info(msg)
-            except FluxxError as e:
-                msg = '{}. {} {} write operation failed.'.format(
-                    e, model.upper(), i
-                )
-                log.error(msg)
-
-            self.queue.task_done()
