@@ -1,18 +1,14 @@
-import os
-import pytest
-from fluxx_wrapper import Fluxx
+import unittest
+
+from fluxx import FluxxClient
 
 
-@pytest.fixture
-def client():
-    return Fluxx(
-        os.environ['INSTANCE'],
-        os.environ['CLIENT'],
-        os.environ['SECRET'],
-        version='v2',
-        style='full'
-    )
+class TestFluxx(unittest.TestCase):
+    """Docstring for FluxxTest. """
 
+    def setUp(self):
+        # TODO
+        self.client = FluxxClient()
 
-def test_client(client):
-    assert isinstance(client, Fluxx)
+    def test_client(self):
+        self.assertIsInstance(self.client, FluxxClient)

@@ -5,10 +5,9 @@ Fluxx API Python Client
     Wed  8 Jun 17:04:16 2016
 """
 
-import os
-import threading
 import logging
 import json
+
 import requests
 
 try:
