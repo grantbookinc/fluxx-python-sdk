@@ -174,10 +174,13 @@ class FluxxClient(object):
         by the columns parameter. Default 100 records per page.
         Current only supports GET requests.
         """
+        if 'page' in kwargs and kwargs['page'] == 0:
+            raise ValueError('Page number must be greater than 1.')
 
         url = self.base_url + model
         params = {
             'cols': json.dumps(cols),
+            'page': kwargs.get('page', 1),
             'per_page': kwargs.get('per_page', 100)
         }
         resp = self.session.get(url, params=params)
