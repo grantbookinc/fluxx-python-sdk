@@ -88,7 +88,8 @@ class FluxxMethod(object):
             method = getattr(self.client, method_type)
             return method(model_type, *args, **kwargs)
 
-        except ValueError:
+        except ValueError as e:
+            print(e)
             raise AttributeError('Invalid model, method combination.')
 
 
@@ -132,8 +133,11 @@ class FluxxClient(object):
         )
         content = resp.json()
 
+        if 'access_token' not in content:
+            raise IOError('Authentication Failed')
+
         # set auth header
-        self.auth_token = content.get('access_token')
+        self.auth_token = content['access_token']
         self.session.headers.update({
             'Authorization': 'Bearer {}'.format(self.auth_token),
         })
