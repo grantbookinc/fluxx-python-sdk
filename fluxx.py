@@ -2,9 +2,10 @@
 
 """
 Fluxx API Python Client
-    Wed  8 Jun 17:04:16 2016
+Created at Wed  8 Jun 17:04:16 2016
 """
 
+import os
 import logging
 import json
 
@@ -19,6 +20,17 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
+
+
+def get_fluxx_client(instance):
+    instance = instance.upper()
+    try:
+        ins = os.environ['{}_INSTANCE'.format(instance)]
+        cli = os.environ['{}_CLIENT'.format(instance)]
+        sec = os.environ['{}_SECRET'.format(instance)]
+        return FluxxClient(ins, cli, sec, 'v2', 'full')
+    except KeyError:
+        raise ValueError('Instance environment parameters must be set.')
 
 
 def format_write_request(dt):
@@ -134,7 +146,8 @@ class FluxxClient(object):
         content = resp.json()
 
         if 'access_token' not in content:
-            raise IOError('Authentication Failed')
+            print(content)
+            raise IOError(content['error_description'])
 
         # set auth header
         self.auth_token = content['access_token']
@@ -185,8 +198,12 @@ class FluxxClient(object):
         params = {
             'cols': json.dumps(cols),
             'page': kwargs.get('page', 1),
-            'per_page': kwargs.get('per_page', 100)
+            'per_page': kwargs.get('per_page', 100),
+            # 'filter': json.dumps(kwargs.get('filter'))
         }
+        if 'filter' in kwargs:
+            params.update({'filter': json.dumps(kwargs['filter'])})
+
         resp = self.session.get(url, params=params)
         return parse_response(resp, model)
 
@@ -206,7 +223,7 @@ class FluxxClient(object):
 
         url = self.base_url + model + '/' + str(id)
         resp = self.session.delete(url)
-        return parse_response(resp, model)
+        return resp
 
     def __getattr__(self, name):
         """Inserts Fluxx Models as first argument
