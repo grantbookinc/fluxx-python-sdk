@@ -23,14 +23,23 @@ log.addHandler(NullHandler())
 
 
 def get_fluxx_client(instance):
+    """Initializes and returns a <FluxxClient> using environmental
+    variables derived from the provided instance string. _INSTANCE, _CLIENT,
+    and _SECRET must appended to the instance name and present in the environment.
+
+    :instance: String
+    :returns: <FluxxClient>
+
+    """
     instance = instance.upper()
     try:
         ins = os.environ['{}_INSTANCE'.format(instance)]
         cli = os.environ['{}_CLIENT'.format(instance)]
         sec = os.environ['{}_SECRET'.format(instance)]
         return FluxxClient(ins, cli, sec, 'v2', 'full')
-    except KeyError:
-        raise ValueError('Instance environment parameters must be set.')
+    except KeyError as e:
+        cause, *_ = e.args
+        raise ValueError('Instance environment parameter "{}" must be set.'.format(cause))
 
 
 def format_write_request(dt):

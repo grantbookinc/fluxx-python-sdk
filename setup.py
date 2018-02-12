@@ -14,6 +14,7 @@ setup(
     author='Connor Sullivan',
     author_email='sully4792@gmail.com',
     install_requires=requires,
+    scripts=['bin/fluxx-cli'],
     tests_require=test_requirements,
     url='https://github.com/theconnor/fluxx-python-sdk',
     download_url='https://github.com/theconnor/fluxx-python-sdk/tarball/' + version,

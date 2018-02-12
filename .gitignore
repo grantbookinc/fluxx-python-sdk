@@ -10,3 +10,4 @@ node_modules
 *_creds.json
 .env
 .cache
+*.egg-info/
