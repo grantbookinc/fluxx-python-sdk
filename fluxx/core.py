@@ -155,7 +155,6 @@ class FluxxClient(object):
         content = resp.json()
 
         if 'access_token' not in content:
-            print(content)
             raise IOError(content['error_description'])
 
         # set auth header

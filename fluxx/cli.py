@@ -97,5 +97,9 @@ class FluxxMigration(object):
         print(json.dumps(records))
 
 
+def main():
+    fire.Fire(FluxxMigration)
+
+
 if __name__ == "__main__":
     fire.Fire(FluxxMigration)

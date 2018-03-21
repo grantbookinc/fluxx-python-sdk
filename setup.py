@@ -1,23 +1,39 @@
-from distutils.core import setup
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from setuptools import setup
+from setuptools import find_packages
 
 
-version = '0.0.1'
-requires = ['requests>=2.12.3']
-test_requirements = ['pytest>=2.8.0']
+VERSION = '0.0.2'
+REQUIRES = ['requests>=2.12.3', 'fire>=0.1.3']
 
 
 setup(
     name='fluxx_wrapper',
-    py_modules=['fluxx_wrapper'],
-    version=version,
+    packages=find_packages(),
+    version=VERSION,
     description='A simple wrapper around Fluxx GMS\'s REST API.',
     author='Connor Sullivan',
     author_email='sully4792@gmail.com',
-    install_requires=requires,
-    scripts=['bin/fluxx-cli'],
-    tests_require=test_requirements,
-    url='https://github.com/theconnor/fluxx-python-sdk',
-    download_url='https://github.com/theconnor/fluxx-python-sdk/tarball/' + version,
+    install_requires=REQUIRES,
+    python_requires='>=3',
+    url='https://github.com/condad/fluxx-python-sdk',
+    download_url='https://github.com/condad/fluxx-python-sdk/tarball/' + VERSION,
     keywords=['fluxx', 'gms', 'api', 'wrapper'],
-    classifiers=[],
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: Apache Software License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+    ],
+    entry_points={
+        'console_scripts': [
+            'fluxx-cli = fluxx.cli:main',
+        ],
+    },
 )
