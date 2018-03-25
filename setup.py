@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import io
+
 from setuptools import setup
 from setuptools import find_packages
 
 
-VERSION = '0.0.2'
+with io.open('README.md', 'rt', encoding='utf8') as f:
+    README = f.read()
+
+
+VERSION = '0.0.4'
 REQUIRES = ['requests>=2.12.3', 'fire>=0.1.3']
 
 
@@ -14,6 +20,8 @@ setup(
     packages=find_packages(),
     version=VERSION,
     description='A simple wrapper around Fluxx GMS\'s REST API.',
+    long_description=README,
+    long_description_content_type='text/markdown',
     author='Connor Sullivan',
     author_email='sully4792@gmail.com',
     install_requires=REQUIRES,

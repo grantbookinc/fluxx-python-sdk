@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 import sys
 import logging
@@ -12,17 +10,17 @@ import fire
 import fluxx
 
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
-class FluxxWorker(threading.Thread):
+class FluxxThread(threading.Thread):
 
     """Spawns a new thread performing Fluxx API
     create and update requests."""
 
     def __init__(self, queue, instance=None, model=None):
         self.q = queue
-        self.client = fluxx.get_fluxx_client(instance)
+        self.client = fluxx.FluxxClient.from_env(instance)
         self.model = model
 
         super().__init__()
@@ -34,29 +32,28 @@ class FluxxWorker(threading.Thread):
             try:
                 rec_id = item.get('id')
                 if rec_id:
-                    new = self.client.update(self.model, rec_id, item)
-                    print('Updated', new['id'])
+                    updated = self.client.update(self.model, rec_id, item)
+                    log.info('Updated {}'.format(updated['id']))
                 else:
-                    new = self.client.create(self.model, item)
-                    print('Created', new['id'])
+                    created = self.client.create(self.model, item)
+                    log.info('Created {}'.format(created['id']))
 
             except NotImplementedError:
-                logger.error('Process method not implemented.')
+                log.error('Process method not implemented.')
+
             except fluxx.FluxxError as e:
-                logger.error(e)
-                print(e)
+                log.error(e)
+
             finally:
                 self.q.task_done()
 
 
-class FluxxMigration(object):
+class FluxxCLI(object):
 
     """Command line interface to this API wrapper, reads and writes JSON."""
 
-
     def __init__(self, instance=None):
         self.instance = instance
-
 
     def crud(self, model, threads=12):
         """Creates or updates a each record provided in the list.
@@ -68,14 +65,15 @@ class FluxxMigration(object):
         :returns: None
 
         """
+
         q = queue.Queue()
 
         input_data = sys.stdin.read()
-        for record in json.loads(input_data):
+        for i, record in enumerate(json.loads(input_data)):
             q.put(record)
 
         for _ in range(threads):
-            worker = FluxxWorker(q, self.instance, model)
+            worker = FluxxThread(q, self.instance, model)
             worker.daemon = True
             worker.start()
 
@@ -91,15 +89,12 @@ class FluxxMigration(object):
         :returns: None
 
         """
-        client = fluxx.get_fluxx_client(self.instance)
+
+        client = fluxx.FluxxClient.from_env(self.instance)
         records = client.list(model, cols=list(cols), page=page, per_page=per_page)
 
-        print(json.dumps(records))
+        sys.stdout.write(str(json.dumps(records)))
 
 
 def main():
-    fire.Fire(FluxxMigration)
-
-
-if __name__ == "__main__":
-    fire.Fire(FluxxMigration)
+    fire.Fire(FluxxCLI)

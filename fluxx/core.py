@@ -21,25 +21,9 @@ except ImportError:
 log = logging.getLogger(__name__)
 log.addHandler(NullHandler())
 
-
-def get_fluxx_client(instance):
-    """Initializes and returns a <FluxxClient> using environmental
-    variables derived from the provided instance string. _INSTANCE, _CLIENT,
-    and _SECRET must appended to the instance name and present in the environment.
-
-    :instance: String
-    :returns: <FluxxClient>
-
-    """
-    instance = instance.upper()
-    try:
-        ins = os.environ['{}_INSTANCE'.format(instance)]
-        cli = os.environ['{}_CLIENT'.format(instance)]
-        sec = os.environ['{}_SECRET'.format(instance)]
-        return FluxxClient(ins, cli, sec, 'v2', 'full')
-    except KeyError as e:
-        cause, *_ = e.args
-        raise ValueError('Instance environment parameter "{}" must be set.'.format(cause))
+ENV_INSTANCE_SUFFIX = 'INSTANCE'
+ENV_APPLICATION_ID_SUFFIX = 'CLIENT'
+ENV_SECRET_SUFFIX = 'SECRET'
 
 
 def format_write_request(dt):
@@ -110,37 +94,33 @@ class FluxxMethod(object):
             return method(model_type, *args, **kwargs)
 
         except ValueError as e:
-            print(e)
-            raise AttributeError('Invalid model, method combination.')
+            raise AttributeError('Invalid model, method combination. {}'.format(e))
 
 
 class FluxxClient(object):
 
     """Fluxx API Client Object,
-    exposes Crud functionality for given
-    objects following authentication
+    exposes Crud functionality for given objects following authentication
     """
-
-    instance = None
-    client_id = None
-    client_id = None
 
     def __init__(self, instance, client_id,
                  client_secret, version='v2', style='full'):
         # generate base url based on instance type
-        _instance = instance.split('.')
         domain = 'fluxx'
         suffix = 'io'
+        _base_url = 'https://{0}.{1}.{2}/'.format(instance, domain, suffix)
+
+        _instance = instance.split('.')
         if _instance.pop() == 'preprod':
             self.production = False
             domain = 'fluxxlabs'
             suffix = 'com'
-        _base_url = 'https://{0}.{1}.{2}/'.format(instance, domain, suffix)
 
-        # create request session
+        # initialize request session
         self.session = requests.Session()
 
-        # set auth token
+        # set auth token retrieval parameters
+        token_url =_base_url + 'oauth/token' 
         oauth_data = {
             'grant_type': 'client_credentials',
             'client_id': client_id,
@@ -148,10 +128,7 @@ class FluxxClient(object):
         }
 
         # retrieve OAuth auth token
-        resp = self.session.post(
-            _base_url + 'oauth/token',
-            data=oauth_data
-        )
+        resp = self.session.post(token_url, data=oauth_data)
         content = resp.json()
 
         if 'access_token' not in content:
@@ -166,6 +143,31 @@ class FluxxClient(object):
         # set instance variables
         self.base_url = _base_url + 'api/rest/{}/'.format(version)
         self.style = style
+
+    @classmethod
+    def from_env(cls, instance):
+        """Initialize client from previously set environmental
+        variables. The instance, client_id, and client_secret Fluxx API
+        keys must be set the following suffixes: _INSTANCE, _CLIENT, _SECRET.
+
+        For example, if the instance is variable is XYZ then XYZ_INSTANCE, 
+        XYZ_CLIENT, and XYZ_SECRET must me set.
+
+        :instance: the prefix of the three required env variables
+        :returns: <FluxxClient> instance
+
+        """
+        instance = instance.upper()
+        try:
+            ins = os.environ['_'.join((instance, ENV_INSTANCE_SUFFIX))]
+            cli = os.environ['_'.join((instance, ENV_APPLICATION_ID_SUFFIX))]
+            sec = os.environ['_'.join((instance, ENV_SECRET_SUFFIX ))]
+            return cls(ins, cli, sec, 'v2', 'full')
+
+        except KeyError as e:
+            cause, *_ = e.args
+            raise ValueError('Instance environment parameter "{}" must be set.'.format(cause))
+
 
     @property
     def style(self):
