@@ -57,11 +57,11 @@ class FluxxCLI(object):
 
     """Command line interface to this API wrapper, reads and writes JSON."""
 
-    def __init__(self, instance=None):
+    def __init__(self, instance=None, log_path=DEFAULT_LOG_PATH):
         self.instance = instance
 
         #  add file handler to module level logger
-        log_file = '{}/{} | {}.log'.format(DEFAULT_LOG_PATH, instance, datetime.now())
+        log_file = '{}/{} | {}.log'.format(log_path, instance, datetime.now())
         handler = logging.FileHandler(log_file)
         log.addHandler(handler)
 
