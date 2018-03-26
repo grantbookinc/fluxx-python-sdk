@@ -4,13 +4,18 @@ import logging
 import threading
 import queue
 import json
+from datetime import datetime
 
 import fire
 
 import fluxx
 
-
 log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
+DEFAULT_LOG_PATH = '.'
+DEFAULT_THREAD_COUNT = 12
+DEFAULT_PER_PAGE = 100
 
 
 class FluxxThread(threading.Thread):
@@ -55,7 +60,12 @@ class FluxxCLI(object):
     def __init__(self, instance=None):
         self.instance = instance
 
-    def crud(self, model, threads=12):
+        #  add file handler to module level logger
+        log_file = '{}/{} | {}.log'.format(DEFAULT_LOG_PATH, instance, datetime.now())
+        handler = logging.FileHandler(log_file)
+        log.addHandler(handler)
+
+    def crud(self, model, threads=DEFAULT_THREAD_COUNT):
         """Creates or updates a each record provided in the list.
         The non-null status of the 'id' attribute of every record determines
         whether it will be created or updated, with None value IDs defaulting
@@ -79,7 +89,7 @@ class FluxxCLI(object):
 
         q.join()
 
-    def list(self, model, cols, page=1, per_page=100):
+    def list(self, model, cols, page=1, per_page=DEFAULT_PER_PAGE):
         """Return a list of records according to the Page and PerPage
         settings. Page must be greater than 0.
 
