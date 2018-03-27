@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+import sys
 import io
 
 from setuptools import setup
 from setuptools import find_packages
 
+if sys.argv[-1] == 'publish':
+    os.system('python setup.py sdist')
+    os.system('twine upload dist/*')
+    sys.exit()
 
 with io.open('README.md', 'rt', encoding='utf8') as f:
     README = f.read()
