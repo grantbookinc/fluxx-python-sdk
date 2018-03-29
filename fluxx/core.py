@@ -26,12 +26,12 @@ ENV_APPLICATION_ID_SUFFIX = 'CLIENT'
 ENV_SECRET_SUFFIX = 'SECRET'
 
 
-def format_write_request(dt):
-    return {
-        'cols': json.dumps(list(dt.values())),
-        'data': json.dumps(dt)
-    }
+def format_columns(cols):
+    return ['_'.join(col.strip().lower().split()) for col in cols]
 
+def format_write_request(dt):
+    cols = format_columns(list(dt.values()))
+    return {'cols': json.dumps(cols), 'data': json.dumps(dt)}
 
 def parse_response(resp, model):
     """Parses Requests response to return model,
@@ -222,7 +222,7 @@ class FluxxClient(object):
 
         url = self.base_url + model + '/' + str(id)
         params = {
-            'cols': json.dumps(cols),
+            'cols': json.dumps(format_columns(cols)),
             'style': kwargs.get('style', self.style)
         }
         resp = self.session.get(url, params=params)
