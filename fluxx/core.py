@@ -30,7 +30,7 @@ def format_columns(cols):
     return ['_'.join(col.strip().lower().split()) for col in cols]
 
 def format_write_request(dt):
-    cols = format_columns(list(dt.values()))
+    cols = format_columns(list(dt.keys()))
     return {'cols': json.dumps(cols), 'data': json.dumps(dt)}
 
 def parse_response(resp, model):

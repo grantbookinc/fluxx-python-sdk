@@ -13,7 +13,7 @@ import fluxx
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-DEFAULT_LOG_PATH = '.'
+DEFAULT_LOG_PATH = './logs'
 DEFAULT_THREAD_COUNT = 12
 DEFAULT_PER_PAGE = 100
 
