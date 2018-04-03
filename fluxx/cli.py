@@ -65,7 +65,7 @@ class FluxxThread(threading.Thread):
 
                 elif rec_method == 'DELETE':
                     deleted = self.client.delete(self.model, rec_id)
-                    log.info('Deleted %s', deleted['id'])
+                    log.info('Deleted %s', deleted)
                 else:
                     log.error('Method not specified')
             except NotImplementedError:
@@ -106,25 +106,48 @@ class FluxxCLI(object):
 
         sys.stdout.write(str(json.dumps(records)))
 
-    def write(self, method, model, threads=DEFAULT_THREAD_COUNT):
+    def create(self, model, threads=DEFAULT_THREAD_COUNT):
         """Updates each record provided in the list.
-        Each record must have an id.
 
-        :model: The Fluxx ModelObject you wish to create.
+        :model: The Fluxx Model Object you wish to create.
         :returns: None
 
         """
 
         with write_operation(self.instance, model, threads) as (q, records):
             for i, record in enumerate(records):
-                record['method'] = method.upper()
+                record['method'] = 'CREATE'
                 q.put(record)
 
-    create = partialmethod(write, 'CREATE')
-    update = partialmethod(write, 'UPDATE')
-    delete = partialmethod(write, 'DELETE')
+    def update(self, model, threads=DEFAULT_THREAD_COUNT):
+        """Updates each record provided in the list.
+        Each record must have an id.
 
-    def crup(self, model, threads=DEFAULT_THREAD_COUNT):
+        :model: The Fluxx Model Object you wish to update.
+        :returns: None
+
+        """
+
+        with write_operation(self.instance, model, threads) as (q, records):
+            for i, record in enumerate(records):
+                record['method'] = 'UPDATE'
+                q.put(record)
+
+    def delete(self, model, threads=DEFAULT_THREAD_COUNT):
+        """Deletes each record provided in the list.
+        Each record must have an id.
+
+        :model: The Fluxx Model Object you wish to update.
+        :returns: None
+
+        """
+
+        with write_operation(self.instance, model, threads) as (q, records):
+            for i, record in enumerate(records):
+                record['method'] = 'DELETE'
+                q.put(record)
+
+    def write(self, model, threads=DEFAULT_THREAD_COUNT):
         """Creates or updates a each record provided in the list.
         The non-null status of the 'id' attribute of every record determines
         whether it will be created or updated, with None value IDs defaulting
