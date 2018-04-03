@@ -6,7 +6,6 @@ import queue
 import json
 from datetime import datetime
 from contextlib import contextmanager
-from functools import partialmethod
 
 import fire
 
@@ -65,7 +64,7 @@ class FluxxThread(threading.Thread):
 
                 elif rec_method == 'DELETE':
                     deleted = self.client.delete(self.model, rec_id)
-                    log.info('Deleted %s', deleted)
+                    log.info('Deleted %s', deleted['id'])
                 else:
                     log.error('Method not specified')
             except NotImplementedError:
