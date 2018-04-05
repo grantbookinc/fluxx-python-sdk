@@ -8,10 +8,6 @@ import io
 from setuptools import setup
 from setuptools import find_packages
 
-if sys.argv[-1] == 'test':
-    os.system('python -sm unittest discover tests "*.py"')
-    sys.exit(0)
-
 if sys.argv[-1] == 'publish':
     os.system('python setup.py sdist')
     os.system('twine upload dist/*')
