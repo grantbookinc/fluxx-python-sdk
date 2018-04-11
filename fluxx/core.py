@@ -63,6 +63,7 @@ def parse_response(resp, model):
 def write_request(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
+        args = list(args)
         data = args.pop()
         body = format_request_body(data)
         method = args[1]
