@@ -146,7 +146,7 @@ class FluxxCLI(object):
                 record['method'] = 'DELETE'
                 q.put(record)
 
-    def write(self, model, threads=DEFAULT_THREAD_COUNT):
+    def upsert(self, model, threads=DEFAULT_THREAD_COUNT):
         """Creates or updates a each record provided in the list.
         The non-null status of the 'id' attribute of every record determines
         whether it will be created or updated, with None value IDs defaulting
