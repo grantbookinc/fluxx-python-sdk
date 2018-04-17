@@ -17,7 +17,7 @@ with io.open('README.md', 'rt', encoding='utf8') as f:
     README = f.read()
 
 
-VERSION = '0.0.6'
+VERSION = '0.0.7'
 REQUIRES = ['requests>=2.12.3', 'fire>=0.1.3']
 
 
