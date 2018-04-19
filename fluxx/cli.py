@@ -22,10 +22,15 @@ DEFAULT_PER_PAGE = 100
 @contextmanager
 def write_operation(instance, model, threads):
     "Initialize queue, read input, start and end threads."
-    q = queue.Queue()
     json_data = sys.stdin.read()
-    input_data = json.loads(json_data)
-    yield (q, input_data)
+    records = json.loads(json_data)
+
+    yield records
+
+    q = queue.Queue()
+    for i, record in enumerate(records):
+        record['index'] = i
+        q.put(record)
 
     for _ in range(threads):
         worker = FluxxThread(q, instance, model)
@@ -113,10 +118,9 @@ class FluxxCLI(object):
 
         """
 
-        with write_operation(self.instance, model, threads) as (q, records):
-            for i, record in enumerate(records):
+        with write_operation(self.instance, model, threads) as records:
+            for record in records:
                 record['method'] = 'CREATE'
-                q.put(record)
 
     def update(self, model, threads=DEFAULT_THREAD_COUNT):
         """Updates each record provided in the list.
@@ -127,10 +131,9 @@ class FluxxCLI(object):
 
         """
 
-        with write_operation(self.instance, model, threads) as (q, records):
+        with write_operation(self.instance, model, threads) as records:
             for i, record in enumerate(records):
                 record['method'] = 'UPDATE'
-                q.put(record)
 
     def delete(self, model, threads=DEFAULT_THREAD_COUNT):
         """Deletes each record provided in the list.
@@ -141,10 +144,9 @@ class FluxxCLI(object):
 
         """
 
-        with write_operation(self.instance, model, threads) as (q, records):
+        with write_operation(self.instance, model, threads) as records:
             for i, record in enumerate(records):
                 record['method'] = 'DELETE'
-                q.put(record)
 
     def upsert(self, model, threads=DEFAULT_THREAD_COUNT):
         """Creates or updates a each record provided in the list.
@@ -157,14 +159,12 @@ class FluxxCLI(object):
 
         """
 
-        with write_operation(self.instance, model, threads) as (q, records):
+        with write_operation(self.instance, model, threads) as records:
             for i, record in enumerate(records):
                 if 'id' in record:
                     record['method'] = 'UPDATE'
                 else:
                     record['method'] = 'CREATE'
-
-                q.put(record)
 
 
 def main():

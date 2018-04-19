@@ -33,7 +33,7 @@ def format_column_name(col):
 
 def format_request_body(dt):
     data = dict((format_column_name(k), v) for k, v in dt.items())
-    return {'cols': json.dumps(list(dt.keys())), 'data': json.dumps(dt)}
+    return {'cols': json.dumps(list(data.keys())), 'data': json.dumps(data)}
 
 
 def parse_response(resp, model):
@@ -254,12 +254,12 @@ class FluxxClient(object):
         url = self.base_url + model + '/' + str(id)
         return self.session.get(url, params=params)
 
-    def delete(self, model, id):
+    def delete(self, model, record_id):
         """deletes a single record based on id"""
 
-        url = self.base_url + model + '/' + str(id)
+        url = self.base_url + model + '/' + str(record_id)
         self.session.delete(url)
-        return {'id': id}
+        return {'id': record_id}
 
     def __getattr__(self, name):
         """Inserts Fluxx Models as first argument
