@@ -25,6 +25,9 @@ def write_operation(instance, model, threads):
     json_data = sys.stdin.read()
     records = json.loads(json_data)
 
+    if 'records' in records:
+        records = records['records']
+
     yield records
 
     q = queue.Queue()
@@ -111,7 +114,7 @@ class FluxxCLI(object):
         sys.stdout.write(str(json.dumps(records)))
 
     def create(self, model, threads=DEFAULT_THREAD_COUNT):
-        """Updates each record provided in the list.
+        """Creates each record provided in the list.
 
         :model: The Fluxx Model Object you wish to create.
         :returns: None
