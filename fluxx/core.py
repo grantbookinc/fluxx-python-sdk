@@ -105,28 +105,6 @@ class FluxxError(IOError):
         )
 
 
-class FluxxMethod(object):
-
-    """Allows first attribute of client
-    to be substituted as the model type of an api call."""
-
-    def __init__(self, client, method_name):
-        self.client = client
-        self.method_name = method_name
-
-    def __getattr__(self, key):
-        return FluxxMethod(self.client, '.'.join((self.method_name, key)))
-
-    def __call__(self, *args, **kwargs):
-        try:
-            model_type, method_type = self.method_name.split('.')
-            method = getattr(self.client, method_type)
-            return method(model_type, *args, **kwargs)
-
-        except ValueError as e:
-            raise AttributeError('Invalid model, method combination. {}'.format(e))
-
-
 class FluxxClient(object):
 
     """Fluxx API Client Object,
@@ -260,13 +238,3 @@ class FluxxClient(object):
         url = self.base_url + model + '/' + str(record_id)
         self.session.delete(url)
         return {'id': record_id}
-
-    def __getattr__(self, name):
-        """Inserts Fluxx Models as first argument
-        in request call.
-
-        :attribute: Model Name
-        :returns: Return value of function call
-
-        """
-        return FluxxMethod(self, name)
