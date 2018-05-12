@@ -14,7 +14,7 @@ import fluxx
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-DEFAULT_LOG_PATH = './logs'
+DEFAULT_LOG_DIR = './logs'
 DEFAULT_THREAD_COUNT = 5
 DEFAULT_PER_PAGE = 100
 
@@ -89,12 +89,17 @@ class FluxxCLI(object):
 
     """Command line interface to this API wrapper, reads and writes JSON."""
 
-    def __init__(self, instance=None, log_path=DEFAULT_LOG_PATH):
+    def __init__(self, instance, log_dir=DEFAULT_LOG_DIR):
         self.instance = instance
 
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        log_file = '{}_{}.log'.format(instance, datetime.now().strftime('%x %X').replace('/', '-'))
+        log_path = os.path.join(log_dir, log_file)
+
         #  add file handler to module level logger
-        log_file = '{}/{} | {}.log'.format(log_path, instance, datetime.now())
-        handler = logging.FileHandler(log_file)
+        handler = logging.FileHandler(log_path, delay=True)
         log.addHandler(handler)
 
     def list(self, model, cols, page=1, per_page=DEFAULT_PER_PAGE):
