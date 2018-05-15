@@ -32,11 +32,15 @@ def write_operation(instance, model, threads):
 
     q = queue.Queue()
     for i, record in enumerate(records):
-        record['index'] = i
-        q.put(record)
+        item = {
+            'index': i,
+            'model': model,
+            'record': record
+        }
+        q.put(item)
 
     for _ in range(threads):
-        worker = FluxxThread(q, instance, model)
+        worker = FluxxThread(q, instance)
         worker.daemon = True
         worker.start()
 
@@ -48,33 +52,39 @@ class FluxxThread(threading.Thread):
     """Spawns a new thread performing Fluxx API
     create and update requests."""
 
-    def __init__(self, queue, instance=None, model=None):
+    def __init__(self, queue, instance):
         self.q = queue
         self.client = fluxx.FluxxClient.from_env(instance)
-        self.model = model
 
         super().__init__()
 
     def run(self):
         while True:
             item = self.q.get()
-            rec_id = item.pop('id', None)
-            rec_method = item.get('method').upper()
+
+            index = item.get('index')
+            method = item.get('method').upper()
+            model = item.get('model').lower()
+            record = item.get('record')
 
             try:
-                if rec_method == 'CREATE':
-                    created = self.client.create(self.model, item)
-                    log.info('Created %s', created['id'])
+                record_id = record.pop('id', None)
+                log_msg = 'Input line {}: {}d record '.format(index, method.title())
 
-                elif rec_method == 'UPDATE':
-                    updated = self.client.update(self.model, rec_id, item)
-                    log.info('Updated %s', updated['id'])
+                if method == 'CREATE':
+                    created = self.client.create(model, record)
+                    log.info(log_msg + created['id'])
 
-                elif rec_method == 'DELETE':
-                    deleted = self.client.delete(self.model, rec_id)
-                    log.info('Deleted %s', deleted['id'])
+                elif method == 'UPDATE':
+                    updated = self.client.update(model, record_id, record)
+                    log.info(log_msg + updated['id'])
+
+                elif method == 'DELETE':
+                    deleted = self.client.delete(model, record_id)
+                    log.info(log_msg + deleted['id'])
                 else:
-                    log.error('Method not specified')
+                    log.info(log_msg + 'Method not specified')
+
             except NotImplementedError:
                 log.error('Process method not implemented.')
 

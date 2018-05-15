@@ -6,7 +6,6 @@ Created at Wed  8 Jun 17:04:16 2016
 """
 
 import os
-import inspect
 import logging
 import json
 from functools import wraps
@@ -43,28 +42,39 @@ def format_write_data(data):
     }
 
 
-def parse_response(content, model):
+def format_output(model, output):
     """Parses Requests response to return model,
     raises Fluxx Error is call was unsuccessful
 
-    :content: <Dict>
     :model: <String>
+    :output: <Dict>
     :returns: <Dict>
 
     """
 
-    if 'error' in content:
-        raise FluxxError(model, content.get('error'))
+    if 'error' in output:
+        raise FluxxError(model, output.get('error'))
 
     if model.split('_')[0] == 'mac':
         model = 'machine_model'
     else:
         model = model.lower()
 
-    if 'records' in content:
-        return content['records'].get(model)
+    if 'records' in output:
+        return output['records'].get(model)
 
-    return content.get(model)
+    return output.get(model)
+
+
+def parse_response(func):
+    """Retrieves relevent data from raw API response."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        model = args[1]
+        response = func(*args, **kwargs)
+        return format_output(model, response.content())
+    return wrapper
 
 
 class FluxxError(IOError):
@@ -166,6 +176,7 @@ class FluxxClient(object):
             raise ValueError('Style must one of: {}'.format(str(options)))
         self._style = value
 
+    @parse_response
     def create(self, model, data):
         """create new fluxx database record and return its id"""
 
@@ -173,6 +184,7 @@ class FluxxClient(object):
         data = format_write_data(data)
         return self.session.post(url, data=data)
 
+    @parse_response
     def update(self, model, rec_id, data):
         """Update an existing record and return it"""
 
@@ -180,6 +192,7 @@ class FluxxClient(object):
         data = format_write_data(data)
         return self.session.put(url, data=data)
 
+    @parse_response
     def list(self, model, cols, page=1, per_page=100, fltr=None):
         """Returns list of relevent object with attributes specified
         by the columns parameter. Default 100 records per page.
@@ -200,6 +213,7 @@ class FluxxClient(object):
         url = self.base_url + model
         return self.session.get(url, params=params)
 
+    @parse_response
     def get(self, model, record_id, cols):
         """Returns a single record based on id"""
 
