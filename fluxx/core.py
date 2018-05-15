@@ -6,6 +6,7 @@ Created at Wed  8 Jun 17:04:16 2016
 """
 
 import os
+import inspect
 import logging
 import json
 from functools import wraps
@@ -28,26 +29,32 @@ ENV_SECRET_SUFFIX = 'SECRET'
 
 
 def format_column_name(col):
+    "Lowercases all words and removes spaces."
     return '_'.join(col.strip().lower().split())
 
 
-def format_request_body(dt):
-    data = dict((format_column_name(k), v) for k, v in dt.items())
-    return {'cols': json.dumps(list(data.keys())), 'data': json.dumps(data)}
+def format_write_data(data):
+    "Formats column headers and extracts column parameter."
+    formatted_data = dict((format_column_name(k), v) for k, v in data.items())
+
+    return {
+        'cols': json.dumps(list(formatted_data.keys())),
+        'data': json.dumps(formatted_data)
+    }
 
 
-def parse_response(resp, model):
+def parse_response(content, model):
     """Parses Requests response to return model,
     raises Fluxx Error is call was unsuccessful
 
-    :resp: <Requests.Response>
+    :content: <Dict>
+    :model: <String>
     :returns: <Dict>
 
     """
-    content = resp.json()
 
     if 'error' in content:
-        raise FluxxError(model, resp.request.method, content.get('error'))
+        raise FluxxError(model, content.get('error'))
 
     if model.split('_')[0] == 'mac':
         model = 'machine_model'
@@ -60,48 +67,20 @@ def parse_response(resp, model):
     return content.get(model)
 
 
-def write_request(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        args = list(args)
-        data = args.pop()
-        body = format_request_body(data)
-        method = args[1]
-
-        args.append(body)
-        resp = func(*args, **kwargs)
-        return parse_response(resp, method)
-    return wrapper
-
-
-def read_request(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        method = args[1]
-        if 'cols' in kwargs:
-            cols = kwargs.pop('cols')
-            kwargs['cols'] = [format_column_name(col) for col in cols]
-
-        resp = func(*args, **kwargs)
-        return parse_response(resp, method)
-    return wrapper
-
-
 class FluxxError(IOError):
 
     """Fluxx error class,
     contains a message and code
     """
 
-    def __init__(self, model, action, error):
+    def __init__(self, model, error):
         self.model = model
-        self.action = action
         self.message = error.get('message')
         self.code = error.get('code')
 
     def __str__(self):
-        return 'Error performing %s request on %s. Code: %s. Messages: %s' % (
-            self.action, self.model, self.code, self.message
+        return 'Error performing request on %s. Code: %s. Messages: %s' % (
+            self.model, self.code, self.message
         )
 
 
@@ -182,27 +161,26 @@ class FluxxClient(object):
 
     @style.setter
     def style(self, value):
-        options = ['detail', 'compact', 'full']
+        options = ('detail', 'compact', 'full')
         if value not in options:
             raise ValueError('Style must one of: {}'.format(str(options)))
         self._style = value
 
-    @write_request
-    def create(self, model, body):
+    def create(self, model, data):
         """create new fluxx database record and return its id"""
 
         url = self.base_url + model
-        return self.session.post(url, data=body)
+        data = format_write_data(data)
+        return self.session.post(url, data=data)
 
-    @write_request
-    def update(self, model, id, body):
-        """update an existing record and return it"""
+    def update(self, model, rec_id, data):
+        """Update an existing record and return it"""
 
-        url = self.base_url + model + '/' + str(id)
-        return self.session.put(url, data=body)
+        url = self.base_url + model + '/' + str(rec_id)
+        data = format_write_data(data)
+        return self.session.put(url, data=data)
 
-    @read_request
-    def list(self, model, cols=['id'], page=1, per_page=100, fltr=None):
+    def list(self, model, cols, page=1, per_page=100, fltr=None):
         """Returns list of relevent object with attributes specified
         by the columns parameter. Default 100 records per page.
         Current only supports GET requests.
@@ -211,25 +189,26 @@ class FluxxClient(object):
             raise ValueError('Page number must be greater than 0.')
 
         params = {
-            'cols': json.dumps(cols),
+            'cols': json.dumps([format_column_name(col) for col in cols]),
             'page': page,
             'per_page': per_page
         }
 
         if fltr:
-            params.update({'filter': json.dumps(filter)})
+            params.update({'filter': json.dumps(fltr)})
 
         url = self.base_url + model
         return self.session.get(url, params=params)
 
-    @read_request
-    def get(self, model, id, cols=['id'], style=None):
-        """returns a single record based on id"""
-        if not style:
-            style = self.style
+    def get(self, model, record_id, cols):
+        """Returns a single record based on id"""
 
-        params = {'cols': json.dumps(cols), 'style': style}
-        url = self.base_url + model + '/' + str(id)
+        params = {
+            'cols': json.dumps(cols),
+            'style': self.style
+        }
+
+        url = self.base_url + model + '/' + str(record_id)
         return self.session.get(url, params=params)
 
     def delete(self, model, record_id):
