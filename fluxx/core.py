@@ -73,7 +73,7 @@ def parse_response(func):
     def wrapper(*args, **kwargs):
         model = args[1]
         response = func(*args, **kwargs)
-        return format_output(model, response.content())
+        return format_output(model, response.json())
     return wrapper
 
 
@@ -142,13 +142,14 @@ class FluxxClient(object):
         self.style = style
 
     @classmethod
-    def from_env(cls, instance):
+    def from_env(cls, instance='FLUXX'):
         """Initialize client from previously set environmental
         variables. The instance, client_id, and client_secret Fluxx API
         keys must be set the following suffixes: _INSTANCE, _CLIENT, _SECRET.
 
         For example, if the instance is variable is XYZ then XYZ_INSTANCE, 
-        XYZ_CLIENT, and XYZ_SECRET must me set.
+        XYZ_CLIENT, and XYZ_SECRET must me set. If instance isn't specified
+        'FLUXX' will be the assumed prefix.
 
         :instance: the prefix of the three required env variables
         :returns: <FluxxClient> instance
@@ -178,7 +179,7 @@ class FluxxClient(object):
 
     @parse_response
     def create(self, model, data):
-        """create new fluxx database record and return its id"""
+        """Create new fluxx database record and return its id"""
 
         url = self.base_url + model
         data = format_write_data(data)
@@ -226,7 +227,7 @@ class FluxxClient(object):
         return self.session.get(url, params=params)
 
     def delete(self, model, record_id):
-        """deletes a single record based on id"""
+        """Deletes a single record based on id"""
 
         url = self.base_url + model + '/' + str(record_id)
         self.session.delete(url)
