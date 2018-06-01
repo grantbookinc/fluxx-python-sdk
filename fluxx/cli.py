@@ -63,9 +63,9 @@ class FluxxThread(threading.Thread):
             item = self.q.get()
 
             index = item.get('index')
-            method = item.get('method').upper()
             model = item.get('model').lower()
             record = item.get('record')
+            method = record.get('method').upper()
 
             try:
                 record_id = record.pop('id', None)
@@ -73,15 +73,15 @@ class FluxxThread(threading.Thread):
 
                 if method == 'CREATE':
                     created = self.client.create(model, record)
-                    log.info(log_msg + created['id'])
+                    log.info(log_msg + str(created['id']))
 
                 elif method == 'UPDATE':
                     updated = self.client.update(model, record_id, record)
-                    log.info(log_msg + updated['id'])
+                    log.info(log_msg + str(updated['id']))
 
                 elif method == 'DELETE':
                     deleted = self.client.delete(model, record_id)
-                    log.info(log_msg + deleted['id'])
+                    log.info(log_msg + str(deleted['id']))
                 else:
                     log.info(log_msg + 'Method not specified')
 
