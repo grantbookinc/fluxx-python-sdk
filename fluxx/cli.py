@@ -4,6 +4,7 @@ import logging
 import threading
 import queue
 import json
+import csv
 from datetime import datetime
 from contextlib import contextmanager
 
@@ -183,6 +184,25 @@ class FluxxCLI(object):
                     record['method'] = 'UPDATE'
                 else:
                     record['method'] = 'CREATE'
+
+    def csv_to_json(self, file_name):
+        """TODO: Docstring for csv_to_json.
+
+        :file_name: csv_file
+        :returns: Outs
+
+        """
+        print(file_name)
+        name, _ = file_name.split('.')
+        jsonfile = name + '.json'
+
+        with open(name + '.csv') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+
+        with open(jsonfile, 'w') as f:
+            json_file = json.dump(rows, f)
+            sys.stdout.write(jsonfile)
 
 
 def main():
