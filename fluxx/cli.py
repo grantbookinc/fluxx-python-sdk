@@ -113,7 +113,7 @@ class FluxxCLI(object):
         handler = logging.FileHandler(log_path, delay=True)
         log.addHandler(handler)
 
-    def list(self, model, cols, page=1, per_page=DEFAULT_PER_PAGE):
+    def list(self, model, cols, filter=None, page=1, per_page=DEFAULT_PER_PAGE):
         """Return a list of records according to the Page and PerPage
         settings. Page must be greater than 0.
 
@@ -125,7 +125,7 @@ class FluxxCLI(object):
         """
 
         client = fluxx.FluxxClient.from_env(self.instance)
-        records = client.list(model, cols=list(cols), page=page, per_page=per_page)
+        records = client.list(model, cols=list(cols), fltr=filter, page=page, per_page=per_page)
 
         sys.stdout.write(str(json.dumps(records)))
 
