@@ -202,6 +202,8 @@ class FluxxClient(object):
         if page < 1:
             raise ValueError('Page number must be greater than 0.')
 
+        cols = json.loads(cols)
+
         params = {
             'cols': json.dumps([format_column_name(col) for col in cols]),
             'page': page,
@@ -209,6 +211,7 @@ class FluxxClient(object):
         }
 
         if fltr:
+            fltr = json.loads(fltr)
             params.update({'filter': json.dumps(fltr)})
 
         url = self.base_url + model

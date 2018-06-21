@@ -22,7 +22,7 @@ with io.open('README.md', 'rt', encoding='utf8') as f:
 
 
 VERSION = '0.0.8'
-REQUIRES = ['requests>=2.12.3', 'fire>=0.1.3']
+REQUIRES = ['requests>=2.12.3', 'click>=5.0']
 
 
 setup(

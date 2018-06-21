@@ -9,6 +9,7 @@ from datetime import datetime
 from contextlib import contextmanager
 
 import fire
+import click
 
 import fluxx
 
@@ -94,6 +95,52 @@ class FluxxThread(threading.Thread):
 
             finally:
                 self.q.task_done()
+
+
+@click.group(invoke_without_command=True)
+@click.argument('instance', default='XYZ')
+@click.argument('model', default='user')
+@click.pass_context
+def fluxx_command(ctx, instance, model):
+    ctx.obj['instance'] = instance
+    ctx.obj['model'] = model
+
+    #  initialize logging
+    if not os.path.exists(DEFAULT_LOG_DIR):
+        click.echo('Creating log directory..')
+        os.makedirs(DEFAULT_LOG_DIR)
+
+    log_file = '{}_{}.log'.format(instance, datetime.now().strftime('%x %X').replace('/', '-'))
+    log_path = os.path.join(DEFAULT_LOG_DIR, log_file)
+
+    #  add file handler to module level logger
+    handler = logging.FileHandler(log_path, delay=True)
+    log.addHandler(handler)
+
+
+@fluxx_command.command()
+@click.argument('cols')
+@click.option('--filter', default=None, help="Filter to query records by.")
+@click.option('--page', default=1, help="Which page to return.")
+@click.option('--per_page', default=DEFAULT_PER_PAGE, help="How many records to return.")
+@click.pass_context
+def list_records(ctx, cols, filter, page, per_page):
+    """Return a list of records according to the Page and PerPage
+    settings. Page must be greater than 0.
+
+    :model: The Fluxx ModelObject you wish to query
+    :page: Section of the total list to retrieve, must be greater than 0.
+    :per_page: Number of records to return per page.
+    :returns: None
+
+    """
+    instance = ctx.obj['instance']
+    model = ctx.obj['model']
+
+    client = fluxx.FluxxClient.from_env(instance)
+    records = client.list(model, cols=(cols), fltr=filter, page=page, per_page=per_page)
+
+    sys.stdout.write(str(json.dumps(records)))
 
 
 class FluxxCLI(object):
@@ -206,4 +253,4 @@ class FluxxCLI(object):
 
 
 def main():
-    fire.Fire(FluxxCLI)
+    fluxx_command(obj={})
