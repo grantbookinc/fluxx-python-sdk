@@ -1,4 +1,5 @@
 import os
+import time
 import sys
 import logging
 import threading
@@ -9,6 +10,7 @@ from datetime import datetime
 from contextlib import contextmanager
 
 import fire
+import requests
 
 import fluxx
 
@@ -88,6 +90,10 @@ class FluxxThread(threading.Thread):
 
             except NotImplementedError:
                 log.error('Process method not implemented.')
+
+            except requests.HTTPError as e:
+                log.error(e)
+                time.sleep(60)
 
             except fluxx.FluxxError as error:
                 log.error(error)
