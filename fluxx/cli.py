@@ -108,11 +108,12 @@ class FluxxCLI(object):
 
     def __init__(self, instance, log_dir=DEFAULT_LOG_DIR):
         self.instance = instance
+        log_dir = log_dir + '/' + instance
 
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
 
-        log_file = '{}_{}.log'.format(instance, datetime.now().strftime('%x %X').replace('/', '-'))
+        log_file = '{}.log'.format(datetime.now().strftime('%x %X').replace('/', '-'))
         log_path = os.path.join(log_dir, log_file)
 
         #  add file handler to module level logger
