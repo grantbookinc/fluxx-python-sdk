@@ -21,6 +21,7 @@ DEFAULT_LOG_DIR = './logs'
 DEFAULT_THREAD_COUNT = 5
 DEFAULT_PER_PAGE = 100
 
+SLEEP_TIME = 60
 
 @contextmanager
 def write_operation(instance, model, threads):
@@ -33,21 +34,25 @@ def write_operation(instance, model, threads):
 
     yield records
 
-    q = queue.Queue()
+    in_q = queue.Queue()
+    out_q = queue.Queue()
     for i, record in enumerate(records):
         item = {
             'index': i,
             'model': model,
             'record': record
         }
-        q.put(item)
+        in_q.put(item)
 
     for _ in range(threads):
-        worker = FluxxThread(q, instance)
+        worker = FluxxThread((in_q, out_q), instance)
         worker.daemon = True
         worker.start()
 
-    q.join()
+    in_q.join()
+    output = list(out_q.queue)
+    output = sorted(output, key=lambda k: k['index'])
+    sys.stdout.write(json.dumps(output))
 
 
 class FluxxThread(threading.Thread):
@@ -55,15 +60,15 @@ class FluxxThread(threading.Thread):
     """Spawns a new thread performing Fluxx API
     create and update requests."""
 
-    def __init__(self, queue, instance):
-        self.q = queue
+    def __init__(self, qs, instance):
+        self.in_q, self.out_q = qs
         self.client = fluxx.FluxxClient.from_env(instance)
 
         super().__init__()
 
     def run(self):
         while True:
-            item = self.q.get()
+            item = self.in_q.get()
 
             index = item.get('index')
             model = item.get('model').lower()
@@ -77,29 +82,36 @@ class FluxxThread(threading.Thread):
                 if method == 'CREATE':
                     created = self.client.create(model, record)
                     log.info(log_msg + str(created['id']))
+                    self.out_q.put({'id': created['id'], 'index': index, 'error': None})
 
                 elif method == 'UPDATE':
                     updated = self.client.update(model, record_id, record)
                     log.info(log_msg + str(updated['id']))
+                    self.out_q.put({'id': updated['id'], 'index': index, 'error': None})
 
                 elif method == 'DELETE':
                     self.client.delete(model, record_id)
                     log.info(log_msg + str(record_id))
+                    self.out_q.put({'id': record_id, 'index': index, 'error': None})
+
                 else:
-                    log.info(log_msg + 'Method not specified')
+                    raise NotImplementedError
 
-            except NotImplementedError:
+            except NotImplementedError as err:
                 log.error('Process method not implemented.')
+                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
 
-            except requests.HTTPError as e:
-                log.error(e)
-                time.sleep(60)
+            except requests.HTTPError as err:
+                log.error(err)
+                time.sleep(SLEEP_TIME)
+                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
 
-            except fluxx.FluxxError as error:
-                log.error(error)
+            except fluxx.FluxxError as err:
+                log.error(err)
+                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
 
             finally:
-                self.q.task_done()
+                self.in_q.task_done()
 
 
 class FluxxCLI(object):
