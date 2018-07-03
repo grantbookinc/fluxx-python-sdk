@@ -73,6 +73,7 @@ def parse_response(func):
     def wrapper(*args, **kwargs):
         model = args[1]
         response = func(*args, **kwargs)
+        response.raise_for_status()
         return format_output(model, response.json())
     return wrapper
 
@@ -230,5 +231,6 @@ class FluxxClient(object):
         """Deletes a single record based on id"""
 
         url = self.base_url + model + '/' + str(record_id)
-        self.session.delete(url)
+        resp = self.session.delete(url)
+        resp.raise_for_status()
         return {'id': record_id}
