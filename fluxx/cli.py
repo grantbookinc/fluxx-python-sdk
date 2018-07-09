@@ -100,17 +100,16 @@ class FluxxThread(threading.Thread):
             except NotImplementedError as err:
                 log.error('Process method not implemented.')
                 self.out_q.put({'id': None, 'index': index, 'error': str(err)})
+                self.in_q.task_done()
 
             except requests.HTTPError as err:
                 log.error(err)
                 time.sleep(SLEEP_TIME)
-                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
+                self.in_q.put(item)
 
             except fluxx.FluxxError as err:
                 log.error(err)
                 self.out_q.put({'id': None, 'index': index, 'error': str(err)})
-
-            finally:
                 self.in_q.task_done()
 
 
