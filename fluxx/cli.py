@@ -117,6 +117,9 @@ class FluxxThread(threading.Thread):
                 self.out_q.put({'id': None, 'index': index, 'error': str(err)})
                 self.in_q.task_done()
 
+            else:
+                self.in_q.task_done()
+
 
 class FluxxCLI(object):
 
