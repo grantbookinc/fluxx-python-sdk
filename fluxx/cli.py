@@ -73,7 +73,7 @@ class FluxxThread(threading.Thread):
             index = item.get('index')
             model = item.get('model').lower()
             record = item.get('record')
-            method = record.pop('method').upper()
+            method = record.get('method').upper()
 
             try:
                 record_id = record.pop('id', None)
@@ -108,6 +108,11 @@ class FluxxThread(threading.Thread):
                 self.in_q.put(item)
 
             except fluxx.FluxxError as err:
+                log.error(err)
+                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
+                self.in_q.task_done()
+
+            except Exception as err:
                 log.error(err)
                 self.out_q.put({'id': None, 'index': index, 'error': str(err)})
                 self.in_q.task_done()
