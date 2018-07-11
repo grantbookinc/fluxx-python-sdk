@@ -18,117 +18,76 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 DEFAULT_LOG_DIR = './logs'
-DEFAULT_THREAD_COUNT = 5
-DEFAULT_PER_PAGE = 100
 
 SLEEP_TIME = 60
+PER_PAGE_MAX = 100
 
-@contextmanager
-def write_operation(instance, model, threads):
-    "Initialize queue, read input, start and end threads."
-    json_data = sys.stdin.read()
-    records = json.loads(json_data)
-
-    if 'records' in records:
-        records = records['records']
-
-    yield records
-
-    in_q = queue.Queue()
-    out_q = queue.Queue()
-    for i, record in enumerate(records):
-        item = {
-            'index': i,
-            'model': model,
-            'record': record
-        }
-        in_q.put(item)
-
-    for _ in range(threads):
-        worker = FluxxThread((in_q, out_q), instance)
-        worker.daemon = True
-        worker.start()
-
-    in_q.join()
-    output = list(out_q.queue)
-    output = sorted(output, key=lambda k: k['index'])
-    sys.stdout.write(json.dumps(output))
+INSTANCE = 'FLUXX'
+MODEL = 'user'
+THREAD_COUNT = 5
 
 
-class FluxxThread(threading.Thread):
+class FluxxWorker(threading.Thread):
 
     """Spawns a new thread performing Fluxx API
     create and update requests."""
 
-    def __init__(self, qs, instance):
+    def __init__(self, qs, delete=False):
         self.in_q, self.out_q = qs
-        self.client = fluxx.FluxxClient.from_env(instance)
+        self.client = fluxx.FluxxClient.from_env(INSTANCE)
+        self.delete = delete
 
         super().__init__()
 
     def run(self):
         while True:
-            item = self.in_q.get()
-
-            index = item.get('index')
-            model = item.get('model').lower()
-            record = item.get('record')
-            method = record.get('method').upper()
+            index, record = self.in_q.get()
+            output = {
+                'index': index,
+                'id': None,
+                'error': None
+            }
 
             try:
-                record_id = record.get('id', None)
-                log_msg = 'Input line {}: {}d record '.format(index, method.title())
+                if 'id' in record:
+                    if self.delete:
+                        self.client.delete(MODEL, record['id'])
+                        log.info('Deleted %s %d', MODEL, record['id'])
+                        output.update({'id': record['id']})
 
-                if method == 'CREATE':
-                    created = self.client.create(model, record)
-                    log.info(log_msg + str(created['id']))
-                    self.out_q.put({'id': created['id'], 'index': index, 'error': None})
-
-                elif method == 'UPDATE':
-                    updated = self.client.update(model, record_id, record)
-                    log.info(log_msg + str(updated['id']))
-                    self.out_q.put({'id': updated['id'], 'index': index, 'error': None})
-
-                elif method == 'DELETE':
-                    self.client.delete(model, record_id)
-                    log.info(log_msg + str(record_id))
-                    self.out_q.put({'id': record_id, 'index': index, 'error': None})
-
+                    else:
+                        updated = self.client.update(MODEL, record['id'], record)
+                        log.info('Updated %s %d', MODEL, updated['id'])
+                        output.update({'id': updated['id']})
                 else:
-                    raise NotImplementedError
+                    created = self.client.create(MODEL, record)
+                    log.info('Created %s %d', MODEL, created['id'])
+                    output.update({'id': created['id']})
 
-            except NotImplementedError as err:
-                log.error('Process method not implemented.')
-                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
-                self.in_q.task_done()
+                self.out_q.put(output)
 
             except requests.HTTPError as err:
-                log.error(err)
-                time.sleep(SLEEP_TIME)
-                self.in_q.put(item)
+                log.info('Retrying %s %d', MODEL, index)
 
-            except fluxx.FluxxError as err:
-                log.error(err)
-                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
-                self.in_q.task_done()
+                time.sleep(SLEEP_TIME)
+                self.in_q.put((index, record))
 
             except Exception as err:
                 log.error(err)
-                self.out_q.put({'id': None, 'index': index, 'error': str(err)})
-                self.in_q.task_done()
-
-            else:
-                self.in_q.task_done()
+                output.update({'error': str(err)})
+                self.out_q.put(output)
 
 
 class FluxxCLI(object):
 
     """Command line interface to this API wrapper, reads and writes JSON."""
 
-    def __init__(self, instance, log_dir=DEFAULT_LOG_DIR):
-        self.instance = instance
-        log_dir = log_dir + '/' + instance
+    def __init__(self, instance=INSTANCE, log_dir=DEFAULT_LOG_DIR):
+        global INSTANCE
+        INSTANCE = instance
 
+        #  setup logging
+        #  log_dir = log_dir + '/' + instance
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
 
@@ -139,7 +98,7 @@ class FluxxCLI(object):
         handler = logging.FileHandler(log_path, delay=True)
         log.addHandler(handler)
 
-    def list(self, model, cols, filter=None, page=1, per_page=DEFAULT_PER_PAGE):
+    def list(self, model, cols, filter=None, page=1, per_page=PER_PAGE_MAX):
         """Return a list of records according to the Page and PerPage
         settings. Page must be greater than 0.
 
@@ -149,67 +108,71 @@ class FluxxCLI(object):
         :returns: None
 
         """
+        global MODEL
+        MODEL = model
 
-        client = fluxx.FluxxClient.from_env(self.instance)
+        client = fluxx.FluxxClient.from_env(INSTANCE)
         records = client.list(model, cols=list(cols), fltr=filter, page=page, per_page=per_page)
 
         sys.stdout.write(str(json.dumps(records)))
 
-    def create(self, model, threads=DEFAULT_THREAD_COUNT):
-        """Creates each record provided in the list.
+    def write(self, model, delete=False):
+        "Initialize queue, read input, start and end threads."
+        global MODEL
+        MODEL = model
 
-        :model: The Fluxx Model Object you wish to create.
-        :returns: None
+        records = self._read_input()
+        records_num = len(records)
+        in_q, out_q = self._connect_workers(records_num, delete)
 
-        """
+        for i, record in enumerate(records):
+            in_q.put((i, record))
 
-        with write_operation(self.instance, model, threads) as records:
-            for record in records:
-                record['method'] = 'CREATE'
+        while not out_q.full():
+            output = list(out_q.queue)
+            output_num = len(output)
+            errors = list(filter(lambda x: x['error'] is not None, output))
+            errors_num = len(errors)
+            successes_num = output_num - errors_num
+            progress_percentage = float(output_num) / float(records_num)
 
-    def update(self, model, threads=DEFAULT_THREAD_COUNT):
-        """Updates each record provided in the list.
-        Each record must have an id.
+            header = '%s, on instance '
+            progress_bar = '%d successes, %d failures of %d total. %.2f%% complete\r' \
+                    % (successes_num, errors_num, output_num, progress_percentage*100)
+            sys.stderr.write(progress_bar)
+            sys.stderr.flush()
 
-        :model: The Fluxx Model Object you wish to update.
-        :returns: None
+        output = list(out_q.queue)
+        output = sorted(output, key=lambda k: k['index'])
+        sys.stdout.write(json.dumps(output))
 
-        """
-
-        with write_operation(self.instance, model, threads) as records:
-            for i, record in enumerate(records):
-                record['method'] = 'UPDATE'
-
-    def delete(self, model, threads=DEFAULT_THREAD_COUNT):
-        """Deletes each record provided in the list.
-        Each record must have an id.
-
-        :model: The Fluxx Model Object you wish to update.
-        :returns: None
-
-        """
-
-        with write_operation(self.instance, model, threads) as records:
-            for i, record in enumerate(records):
-                record['method'] = 'DELETE'
-
-    def upsert(self, model, threads=DEFAULT_THREAD_COUNT):
-        """Creates or updates a each record provided in the list.
-        The non-null status of the 'id' attribute of every record determines
-        whether it will be created or updated, with None value IDs defaulting
-        to creation.
-
-        :model: The Fluxx ModelObject you wish to create.
-        :returns: None
+    def _connect_workers(self, size, delete):
+        """Starts FluxxWorkers.
+        :returns: Pair of queues.
 
         """
+        in_q = queue.Queue()
+        out_q = queue.Queue(maxsize=size)
 
-        with write_operation(self.instance, model, threads) as records:
-            for i, record in enumerate(records):
-                if 'id' in record:
-                    record['method'] = 'UPDATE'
-                else:
-                    record['method'] = 'CREATE'
+        for _ in range(THREAD_COUNT):
+            worker = FluxxWorker((in_q, out_q), delete)
+            worker.daemon = True
+            worker.start()
+    
+        return (in_q, out_q)
+
+    def _read_input(self):
+        """TODO: Docstring for _read_input.
+        :returns: TODO
+
+        """
+        json_data = sys.stdin.read()
+        records = json.loads(json_data)
+
+        if 'records' in records:
+            records = records['records']
+
+        return records
 
     def csv_to_json(self, file_name):
         """TODO: Docstring for csv_to_json.
