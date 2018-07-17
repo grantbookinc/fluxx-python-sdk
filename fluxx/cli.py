@@ -27,15 +27,31 @@ MODEL = 'user'
 THREAD_COUNT = 5
 
 
+def start_workers(size, delete=False, migrate=False):
+    """Starts FluxxWorkers.
+    :returns: Pair of queues.
+
+    """
+    streams = (queue.Queue(), queue.Queue(maxsize=size))
+
+    for _ in range(THREAD_COUNT):
+        worker = FluxxWorker(streams, delete, migrate)
+        worker.daemon = True
+        worker.start()
+
+    return streams
+
+
 class FluxxWorker(threading.Thread):
 
     """Spawns a new thread performing Fluxx API
     create and update requests."""
 
-    def __init__(self, qs, delete=False):
+    def __init__(self, qs, delete=False, migrate=False):
         self.in_q, self.out_q = qs
         self.client = fluxx.FluxxClient.from_env(INSTANCE)
         self.delete = delete
+        self.migrate = migrate
 
         super().__init__()
 
@@ -49,6 +65,13 @@ class FluxxWorker(threading.Thread):
             }
 
             try:
+                if self.migrate:
+                    fltr = ["migrate_id", "eq", record['migrate_id']]
+                    matches = self.client.list(MODEL, record['id'], fltr=fltr)
+                    if len(matches) != 1:
+                        raise ValueError('Migrate ID invalid.')
+                    record.update(matches[0])
+
                 if 'id' in record:
                     if self.delete:
                         self.client.delete(MODEL, record['id'])
@@ -116,14 +139,22 @@ class FluxxCLI(object):
 
         sys.stdout.write(str(json.dumps(records)))
 
-    def write(self, model, delete=False):
-        "Initialize queue, read input, start and end threads."
+    def write(self, model, delete=False, migrate=False, threads=THREAD_COUNT):
+        """Create records from input stream.
+
+        --delete | Delete records rather than creating/updating them.
+        --migrate | Use 'migrate_id' in place of regular id field.
+        --threads | Number of connections to Fluxx API to use.
+
+        """
         global MODEL
         MODEL = model
+        global THREAD_COUNT
+        THREAD_COUNT = threads
 
         records = self._read_input()
         records_num = len(records)
-        in_q, out_q = self._connect_workers(records_num, delete)
+        in_q, out_q = start_workers(records_num, delete, migrate)
 
         for i, record in enumerate(records):
             in_q.put((i, record))
@@ -138,28 +169,13 @@ class FluxxCLI(object):
 
             header = '%s, on instance '
             progress_bar = '%d successes, %d failures of %d total. %.2f%% complete\r' \
-                    % (successes_num, errors_num, output_num, progress_percentage*100)
+                    % (successes_num, errors_num, records_num, progress_percentage*100)
             sys.stderr.write(progress_bar)
             sys.stderr.flush()
 
         output = list(out_q.queue)
         output = sorted(output, key=lambda k: k['index'])
         sys.stdout.write(json.dumps(output))
-
-    def _connect_workers(self, size, delete):
-        """Starts FluxxWorkers.
-        :returns: Pair of queues.
-
-        """
-        in_q = queue.Queue()
-        out_q = queue.Queue(maxsize=size)
-
-        for _ in range(THREAD_COUNT):
-            worker = FluxxWorker((in_q, out_q), delete)
-            worker.daemon = True
-            worker.start()
-    
-        return (in_q, out_q)
 
     def _read_input(self):
         """TODO: Docstring for _read_input.
@@ -181,7 +197,6 @@ class FluxxCLI(object):
         :returns: Outs
 
         """
-        print(file_name)
         name, _ = file_name.split('.')
         jsonfile = name + '.json'
 
