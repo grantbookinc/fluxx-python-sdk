@@ -110,7 +110,7 @@ class FluxxCLI(object):
         INSTANCE = instance
 
         #  setup logging
-        #  log_dir = log_dir + '/' + instance
+        log_dir = log_dir + '/' + instance
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
 
