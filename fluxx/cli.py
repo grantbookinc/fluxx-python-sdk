@@ -3,6 +3,7 @@ import time
 import sys
 import logging
 import threading
+import collections
 import queue
 import json
 import csv
@@ -68,7 +69,7 @@ class FluxxWorker(threading.Thread):
                 if self.migrate:
                     fltr = ["migrate_id", "eq", record['migrate_id']]
                     matches = self.client.list(MODEL, record['id'], fltr=fltr)
-                    if len(matches) != 1:
+                    if (not isinstance(matches, collections.Iterable)) or (len(matches) != 1):
                         raise ValueError('Migrate ID invalid.')
                     record.update(matches[0])
 
@@ -90,7 +91,7 @@ class FluxxWorker(threading.Thread):
                 self.out_q.put(output)
 
             except requests.HTTPError as err:
-                log.info('Retrying %s %d', MODEL, index)
+                log.info('Retrying %s %d, %s', MODEL, index, err)
 
                 time.sleep(SLEEP_TIME)
                 self.in_q.put((index, record))
