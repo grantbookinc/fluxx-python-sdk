@@ -73,7 +73,7 @@ class FluxxWorker(threading.Thread):
                         raise ValueError('Migrate ID invalid.')
                     record.update(matches[0])
 
-                if 'id' in record:
+                if ('id' in record) and record.get('id'):
                     if self.delete:
                         self.client.delete(MODEL, record['id'])
                         log.info('Deleted %s %d', MODEL, record['id'])

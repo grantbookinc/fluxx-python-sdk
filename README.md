@@ -3,21 +3,21 @@ Simple wrapper around the Fluxx GMS API.
 
 ## Installation
 ```bash
-$ pip install fluxx-python-sdk
+$ pip install fluxx_wrapper
 ```
 
 ## TODO
-  -change subdomain to full url
-  -better in tool command documentation
+  - change subdomain to full url
+  - better in tool command documentation
 
 
 ## Config
 The command line tool expects three environmental variables to be set:
-  -url of the fluxx instance (url segment before .fluxx.io)
-  -application ID
-  -application secret
+  - url of the fluxx instance (url segment before .fluxx.io)
+  - application ID
+  - application secret
 
-It's required to set these variables using a unique identifier
+It is required to set these variables using a unique identifier
 and the following suffixes, respectively:
   _INSTANCE
   _CLIENT
@@ -26,12 +26,12 @@ and the following suffixes, respectively:
 For example, if we have a Fluxx instance with url "demo.fluxx.io", application id "ABC",
 and application secret "123", we would set the following:
 
-  DEMO_INSTANCE = 'demo.fluxx.io'
-  DEMO_CLIENT = 'ABC'
-  DEMO_SECRET = '123'
+  DEMO_INSTANCE = 'demo.fluxx.io'  
+  DEMO_CLIENT = 'ABC'  
+  DEMO_SECRET = '123'  
 
 
-## Example Usage
+## Example Usage as Library
 
 ```python
 from fluxx_wrapper import FluxxClient, FluxxError
